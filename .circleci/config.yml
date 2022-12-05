@@ -1,6 +1,7 @@
 version: 2.1
 
 jobs:
+  # job to create infra in aws (cloudformation stack)
   create_infrastructure: 
       docker:
         - image: amazon/aws-cli
@@ -14,6 +15,7 @@ jobs:
                 --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5} \
                 --region us-east-1
 
+  # job to install ansible and run it in aws already-created ec2
   configure_infrastructure: 
     docker:
       - image: python:3.7-alpine3.11
@@ -30,8 +32,27 @@ jobs:
           command: |
             ansible-playbook -i inventory main.yml
 
+  # job to perform smoke test on website response
+  smoke_test:
+    docker:
+      - image: alpine:latest
+    steps:
+      - run: apk add --update curl
+      - run:
+          name: smoke test
+          command: |
+            URL="https://blog.udacity.com/"
+            # Test if website exists
+            if curl -s --head ${URL} 
+            then
+              return 0
+            else
+              return 1
+            fi
+
 workflows:
   myWorkflow:
     jobs:
       #- create_infrastructure
-      - configure_infrastructure
+      #- configure_infrastructure
+      - smoke_test
